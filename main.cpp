@@ -1,8 +1,10 @@
 #include <SDL2/SDL.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
+#include <stdint.h>
+#include "chip8.h"
 
-#define SCREEN_WIDTH 64
-#define SCREEN_HEIGHT 32
+using std::printf; using std::exit;
 
 SDL_Window* window = NULL;
 
@@ -11,10 +13,9 @@ SDL_Renderer* renderer = NULL;
 //Current display image
 SDL_Texture* texture = NULL;
 
-uint8_t memory[4096];
-
 int main( int argc, char* argv[] )
 {
+
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
     {
         printf( "SDL initialization failed, %s\n",  SDL_GetError() );
@@ -22,31 +23,33 @@ int main( int argc, char* argv[] )
     }
 
     window = SDL_CreateWindow( "CHIP8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH * 16, SCREEN_HEIGHT * 16, 0 );
-    if( window == NULL )
+    if( window == nullptr )
     {
         printf( "window failed to initialize, %s\n", SDL_GetError() );
         exit(1);
     }
 
     renderer = SDL_CreateRenderer( window, -1, 0 );
-    if( renderer == NULL )
+    if( renderer == nullptr )
     {
         printf( "renderer failed to initialize, %s\n", SDL_GetError() );
         exit(1);
     }
 
     texture = SDL_CreateTexture( renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT );
-    if( texture == NULL )
+    if( texture == nullptr )
     {
         printf( "texture failed to initialize, %s\n", SDL_GetError() );
         exit(1);
     }
+    
+    // Initializing Chip8
+    Chip8 chip;
 
     // Initializing screen
-    uint32_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
     for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i)
     {
-            screen[i] = 0xFF00FF00;
+            chip.screen[i] = 0xFF00FF00;
     }
 
     bool quit = false;
@@ -74,10 +77,8 @@ int main( int argc, char* argv[] )
         
         if ( screenDrawn ) {
             
-            // According to SDL Documentation, LockTexture is faster for frequent writes than UpdateTexture. Consensus online varies on this point.
-            // TODO: profiling to determine speed of lock vs update
             SDL_LockTexture( texture, NULL, (void**)&pixels, &pitch );
-            memcpy( pixels, screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
+            memcpy( pixels, chip.screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
             SDL_UnlockTexture(texture);
 
         }
@@ -85,4 +86,12 @@ int main( int argc, char* argv[] )
         SDL_RenderCopy( renderer, texture, NULL, NULL );
         SDL_RenderPresent( renderer );
     }
+
+    SDL_DestroyWindow( window );
+    SDL_DestroyRenderer( renderer );
+    SDL_DestroyTexture( texture );
+    window = nullptr;
+    renderer = nullptr;
+    texture = nullptr;
+
 }

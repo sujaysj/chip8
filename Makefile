@@ -1,8 +1,8 @@
-OBJS = main.cpp
+OBJS = main.cpp chip8.cpp
 
 CC = g++
 
-COMPILER_FLAGS = -w
+COMPILER_FLAGS = -I.
 
 LINKER_FLAGS = -lSDL2
 
