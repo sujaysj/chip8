@@ -6,14 +6,17 @@
 #include <cstdlib>
 #include <cstdint>
 #include <array>
+#include <string>
 
-const int SCREEN_WIDTH = 64;
-const int SCREEN_HEIGHT = 32;
-const int MEM_SIZE = 4096;
+constexpr int SCREEN_WIDTH = 64;
+constexpr int SCREEN_HEIGHT = 32;
+constexpr int MEM_SIZE = 4096;
+constexpr int PROGRAM_ADDRESS = 0x200;
+constexpr uint32_t WHITE_PIXEL = 0xFFFFFFFF;
+constexpr uint32_t BLACK_PIXEL = 0xFF000000;
 
 struct Chip8 {
     Chip8();
-    ~Chip8();
 
     uint8_t mem[MEM_SIZE]; // Chip-8 memory
     uint32_t screen[SCREEN_WIDTH * SCREEN_HEIGHT]; // screen buffer
@@ -26,6 +29,8 @@ struct Chip8 {
     uint8_t SP; // stack pointer
 
     bool screenDrawn;
+
+    bool loadFile(std::string filename);
 
     void clearScreen();
     void returnFromSubroutine();

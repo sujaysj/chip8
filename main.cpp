@@ -13,9 +13,9 @@ SDL_Renderer* renderer = NULL;
 //Current display image
 SDL_Texture* texture = NULL;
 
-int main( int argc, char* argv[] )
+int main(int argc, char* argv[])
 {
-
+    #pragma region
     if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
     {
         printf( "SDL initialization failed, %s\n",  SDL_GetError() );
@@ -42,7 +42,8 @@ int main( int argc, char* argv[] )
         printf( "texture failed to initialize, %s\n", SDL_GetError() );
         exit(1);
     }
-    
+    #pragma endregion
+
     // Initializing Chip8
     Chip8 chip;
 
@@ -76,11 +77,9 @@ int main( int argc, char* argv[] )
         }
         
         if ( screenDrawn ) {
-            
             SDL_LockTexture( texture, NULL, (void**)&pixels, &pitch );
             memcpy( pixels, chip.screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
             SDL_UnlockTexture(texture);
-
         }
 
         SDL_RenderCopy( renderer, texture, NULL, NULL );
@@ -93,5 +92,4 @@ int main( int argc, char* argv[] )
     window = nullptr;
     renderer = nullptr;
     texture = nullptr;
-
 }
