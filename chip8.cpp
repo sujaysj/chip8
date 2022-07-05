@@ -26,6 +26,27 @@ const std::array<uint8_t, FONT_SIZE> font
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
+const std::array<uint8_t, 0x10> keyBindings
+{
+    
+    SDL_SCANCODE_X, // 0
+    SDL_SCANCODE_1, // 1
+    SDL_SCANCODE_2, // 2
+    SDL_SCANCODE_3, // 3
+    SDL_SCANCODE_Q, // 4
+    SDL_SCANCODE_W, // 5
+    SDL_SCANCODE_E, // 6
+    SDL_SCANCODE_A, // 7
+    SDL_SCANCODE_S, // 8
+    SDL_SCANCODE_D, // 9
+    SDL_SCANCODE_Z, // A
+    SDL_SCANCODE_C, // B
+    SDL_SCANCODE_4, // C
+    SDL_SCANCODE_R, // D
+    SDL_SCANCODE_F, // E
+    SDL_SCANCODE_V  // F
+};
+
 Chip8::Chip8(): mem{}, screen{}, V{}, stack{}, I(0), DT(0), ST(0), PC(0), SP(0), screenDrawn(false)
 {
     std::srand(1);
@@ -60,6 +81,11 @@ bool Chip8::loadFile(std::string filename)
     chipFile.close();
     return true;
 
+}
+
+void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
+{
+    
 }
 
 void Chip8::clearScreen() 
@@ -217,4 +243,12 @@ void Chip8::draw(uint8_t x, uint8_t y, uint8_t n)
     }
 
     screenDrawn = true;
+}
+
+void Chip8::skipKeyPressed(uint8_t x, uint8_t* keyboardState)
+{
+    if (keyboardState[keyBindings[x]])
+    {
+        
+    }
 }

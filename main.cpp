@@ -62,8 +62,11 @@ int main(int argc, char* argv[])
     int pitch;
     uint32_t* pixels;
 
-    // flag set to true when a draw instruction is executed
-    bool screenDrawn = true;
+    // array for keyUp events to be used for Fx0A: wait for key press instruction
+    bool keyUp[0x10];
+    std::fill(keyUp, keyUp + 0x10, false);
+
+    uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
 
     while( !quit )
     {
@@ -74,12 +77,66 @@ int main(int argc, char* argv[])
             {
                 quit = true;
             }
+            if( e.type == SDLK_KEYUP )
+            {
+                switch (e.key.keysym.sym)
+                {
+                    case (Keypad::KEY_0):
+                        keyUp[0x0] = true;
+                        break;
+                    case (Keypad::KEY_1):
+                        keyUp[0x1] = true;
+                        break;
+                    case (Keypad::KEY_2):
+                        keyUp[0x2] = true;
+                        break;
+                    case (Keypad::KEY_3):
+                        keyUp[0x3] = true;
+                        break;
+                    case (Keypad::KEY_4):
+                        keyUp[0x4] = true;
+                        break;
+                    case (Keypad::KEY_5):
+                        keyUp[0x5] = true;
+                        break;
+                    case (Keypad::KEY_6):
+                        keyUp[0x6] = true;
+                        break;
+                    case (Keypad::KEY_7):
+                        keyUp[0x7] = true;
+                        break;
+                    case (Keypad::KEY_8):
+                        keyUp[0x8] = true;
+                        break;
+                    case (Keypad::KEY_9):
+                        keyUp[0x9] = true;
+                        break;
+                    case (Keypad::KEY_A):
+                        keyUp[0xA] = true;
+                        break;
+                    case (Keypad::KEY_B):
+                        keyUp[0xB] = true;
+                        break;
+                    case (Keypad::KEY_C):
+                        keyUp[0xC] = true;
+                        break;
+                    case (Keypad::KEY_D):
+                        keyUp[0xD] = true;
+                        break;
+                    case (Keypad::KEY_E):
+                        keyUp[0xE] = true;
+                        break;
+                    case (Keypad::KEY_F):
+                        keyUp[0xF] = true;
+                        break;
+                }
+            }
         }
-        
+
         if ( screenDrawn ) {
             SDL_LockTexture( texture, NULL, (void**)&pixels, &pitch );
             memcpy( pixels, chip.screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
-            SDL_UnlockTexture(texture);
+            SDL_UnlockTexture( texture );
         }
 
         SDL_RenderCopy( renderer, texture, NULL, NULL );
