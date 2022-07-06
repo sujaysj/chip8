@@ -133,7 +133,9 @@ int main(int argc, char* argv[])
             }
         }
 
-        if ( screenDrawn ) {
+        chip.runCycle(keyboardState, keyUp);
+
+        if ( chip.screenDrawn ) {
             SDL_LockTexture( texture, NULL, (void**)&pixels, &pitch );
             memcpy( pixels, chip.screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
             SDL_UnlockTexture( texture );

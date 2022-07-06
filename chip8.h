@@ -53,6 +53,7 @@ struct Chip8 {
     bool loadFile(std::string filename);
 
     void runCycle(uint8_t* keyboardState, bool* keyUp);
+    void invalidOpcode(uint16_t opcode);
 
     void clearScreen();
     void returnFromSubroutine();
@@ -77,7 +78,7 @@ struct Chip8 {
     void skipKeyPressed(uint8_t x, uint8_t* keyboardState);
     void skipNotPressed(uint8_t x, uint8_t* keyboardState);
     void loadFromDelayTimer(uint8_t x);
-    void waitKeyPress(uint8_t x, uint8_t key, uint8_t* keyUp);
+    void waitKeyPress(uint8_t x, bool* keyUp);
     void setDelayTimer(uint8_t x);
     void setSoundTimer(uint8_t x);
     void addAddressRegister(uint8_t x);
