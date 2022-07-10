@@ -54,14 +54,18 @@ Chip8::Chip8(): mem{}, screen{}, V{}, stack{}, I(0), DT(0), ST(0), PC(0), SP(0),
     {
         mem[i] = font[i];
     }
+    for (auto i=0; i < SCREEN_HEIGHT * SCREEN_WIDTH; ++i)
+    {
+        screen[i] = 0xFF000000;
+    }
 }
 
 bool Chip8::loadFile(std::string filename)
 {
-    std::ifstream chipFile(filename);
+    std::ifstream chipFile = std::ifstream(filename, std::ios_base::binary);
     if (!chipFile)
     {
-        printf("File not found");
+        printf("File not found\n");
         return false;
     }
 
@@ -72,22 +76,27 @@ bool Chip8::loadFile(std::string filename)
 
     if (length > (MEM_SIZE - PROGRAM_ADDRESS))
     {
-        printf("File too large");
+        printf("File too large\n");
         chipFile.close();
         return false;
     }
 
-    chipFile.read(reinterpret_cast<char*>(mem[PROGRAM_ADDRESS]), length);
+    char buffer[length];
+    
+    chipFile.read(reinterpret_cast<char*>(&mem[PROGRAM_ADDRESS]), length);
     chipFile.close();
+
     return true;
 
 }
 
-void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
+void Chip8::runCycle(const uint8_t* keyboardState, bool* keyUp)
 {
     uint8_t leftByte = mem[PC];
     uint8_t rightByte = mem[PC + 1];
     uint16_t opcode = ((uint16_t)leftByte << 8) + (rightByte);
+
+    printf("op %04hX ad %04hX\n", opcode, PC);
 
     // variables for readability when these nibbles are used by an instruction to specify a register
     uint8_t x = leftByte & 0x0F;
@@ -104,8 +113,6 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
                 case (0x00EE):
                     returnFromSubroutine();
                     break;
-                default:
-                    invalidOpcode(opcode);
             }
             break;
         case (0x1000):
@@ -121,7 +128,7 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
             skipNotEquals(V[x], rightByte);
             break;
         case (0x5000):
-            if (opcode & 0x000F == 0x0000)
+            if ((opcode & 0xF) == 0x0)
             {
                 skipEquals(V[x], V[y]);
             }
@@ -137,7 +144,7 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
             add(x, rightByte);
             break;
         case (0x8000):
-            switch (opcode & 0x000F)
+            switch (opcode & 0xF)
             {
                 case (0x0):
                     loadRegister(x, V[y]);
@@ -171,9 +178,9 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
             }
             break;
         case (0x9000):
-            if (opcode & 0x000F == 0x0000)
+            if ((opcode & 0xF) == 0x0)
             {
-                skipEquals(V[x], V[y]);
+                skipNotEquals(V[x], V[y]);
             }
             else
             {
@@ -196,10 +203,10 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
             switch (rightByte)
             {
                 case (0x9E):
-                    skipKeyPressed(x, keyBoardState);
+                    skipKeyPressed(x, keyboardState);
                     break;
                 case (0xA1):
-                    skipNotPressed(x, keyBoardState);
+                    skipNotPressed(x, keyboardState);
                     break;
                 default:
                     invalidOpcode(opcode);
@@ -248,12 +255,14 @@ void Chip8::runCycle(uint8_t* keyBoardState, bool* keyUp)
 
 void Chip8::invalidOpcode(uint16_t opcode)
 {
-    printf("Invalid opcode %04X at address %04X, program terminated", &opcode, &PC);
+    printf("Invalid opcode %04hX at address %04hX, program terminated\n", opcode, PC);
+    exit(1);
 }
 
 void Chip8::clearScreen() 
 {
-    std::fill(screen, screen+(SCREEN_WIDTH*SCREEN_HEIGHT), 0);
+    const uint32_t zeroTest = 0;
+    std::fill(screen, screen+(SCREEN_WIDTH*SCREEN_HEIGHT), zeroTest);
     screenDrawn = true;
 }
 
@@ -266,6 +275,7 @@ void Chip8::returnFromSubroutine()
 void Chip8::jump(uint16_t addr) 
 {
     PC = addr;
+    PC -= 2; // keep program counter static after runCycle increment
 }
 
 void Chip8::call(uint16_t addr) 
@@ -273,6 +283,7 @@ void Chip8::call(uint16_t addr)
     ++SP;
     stack[SP] = PC;
     PC = addr;
+    PC -= 2; // keep program counter static after runCycle increment
 }
 
 void Chip8::skipEquals(uint8_t byte1, uint8_t byte2) 
@@ -306,7 +317,7 @@ void Chip8::orOp(uint8_t x, uint8_t y)
 
 void Chip8::andOp(uint8_t x, uint8_t y) 
 {
-    V[x] = (V[x] && V[y]);
+    V[x] = (V[x] & V[y]);
 }
 
 void Chip8::xorOp(uint8_t x, uint8_t y) 
@@ -317,7 +328,7 @@ void Chip8::xorOp(uint8_t x, uint8_t y)
 void Chip8::addCarry(uint8_t x, uint8_t y)
 {
     uint8_t result = V[x] + V[y];
-    if (result < (x|y)) {
+    if (result < (V[x] | V[y])) {
         V[0xf] = 1;
     } 
     else {
@@ -342,7 +353,7 @@ void Chip8::shiftRight(uint8_t x)
 {
     V[0xf] = (1 & V[x]);
 
-    V[x] = V[x] >> 2;
+    V[x] = V[x] >> 1;
 }
 
 void Chip8::subtractSwapped(uint8_t x, uint8_t y) 
@@ -361,7 +372,7 @@ void Chip8::shiftLeft(uint8_t x)
 {
     V[0xf] = ((0b1000'0000 & V[x]) >> 7);
 
-    V[x] = V[x] << 2;
+    V[x] = V[x] << 1;
 }
 
 void Chip8::loadAddr(uint16_t addr) 
@@ -369,9 +380,9 @@ void Chip8::loadAddr(uint16_t addr)
     I = addr;
 }
 
-void Chip8::random(uint8_t x, uint16_t byte) 
+void Chip8::random(uint8_t x, uint8_t byte) 
 {
-    uint16_t randInt = std::rand();
+    uint8_t randInt = std::rand();
     V[x] = (randInt & byte);
 }
 
@@ -379,18 +390,18 @@ void Chip8::drawByte(uint8_t byte, uint8_t x, uint8_t y)
 {
     for (auto i=0; i<8; ++i) {
         // check left-most bit
-        if ((byte & 0x80) == 1) 
-        {
-            screen[(y*SCREEN_WIDTH) + ((x+i) % SCREEN_WIDTH)] = WHITE_PIXEL;
-        }
-        else
+        if (byte & 0x80) 
         {
             // set carry flag if a collision occurs
             if (screen[(y*SCREEN_WIDTH) + ((x+i) % SCREEN_WIDTH)] == WHITE_PIXEL) 
             {
                 V[0xf] = 1;
+                screen[(y*SCREEN_WIDTH) + ((x+i) % SCREEN_WIDTH)] = BLACK_PIXEL;
             }
-            screen[(y*SCREEN_WIDTH) + ((x+i) % SCREEN_WIDTH)] = BLACK_PIXEL;
+            else
+            {
+                screen[(y*SCREEN_WIDTH) + ((x+i) % SCREEN_WIDTH)] = WHITE_PIXEL;
+            }
         }
         byte = byte << 1;
     }
@@ -402,29 +413,29 @@ void Chip8::draw(uint8_t x, uint8_t y, uint8_t n)
     V[0xf] = 0;
 
     for (auto i=0; i<n; ++i) {
-        drawByte(mem[I+i], V[x], V[y] + (SCREEN_WIDTH * i));
+        drawByte(mem[I+i], V[x], V[y] + i);
     }
 
     screenDrawn = true;
 }
 
-void Chip8::skipKeyPressed(uint8_t x, uint8_t* keyboardState)
+void Chip8::skipKeyPressed(uint8_t x, const uint8_t* keyboardState)
 {
-    if (keyboardState[keyBindings[x]])
+    if (keyboardState[keyBindings[V[x]]])
     {
         PC += 2;
     }
 }
 
-void Chip8::skipNotPressed(uint8_t x, uint8_t* keyboardState)
+void Chip8::skipNotPressed(uint8_t x, const uint8_t* keyboardState)
 {
-    if (!keyboardState[keyBindings[x]])
+    if (!keyboardState[keyBindings[V[x]]])
     {
         PC += 2;
     }
 }
 
-void Chip8::loadFromDelayTimer(uint8_t x);
+void Chip8::loadFromDelayTimer(uint8_t x)
 {
     V[x] = DT;
 }
@@ -437,15 +448,16 @@ void Chip8::loadFromDelayTimer(uint8_t x);
 // the second key is registered. This may not be consistent with the original interpreter.
 void Chip8::waitKeyPress(uint8_t x, bool* keyUp)
 {
-    for (int i = 0; i < 0x10; ++i)
+    for (auto i = 0; i < 0x10; ++i)
     {
-        if (keyUp[keyBindings[i]])
+        if (keyUp[i])
         {
             V[x] = i;
             PC += 2;
             break;
         }
     }
+    std::fill(keyUp, keyUp + 16, 0);
     PC -=2; // decrement program counter so after runCycle() the net change is 0 if not pressed, +2 if pressed.
 }
 
@@ -466,7 +478,7 @@ void Chip8::addAddressRegister(uint8_t x)
 
 void Chip8::loadFont(uint8_t x)
 {
-    I = mem[V[x] * 5];
+    I = V[x] * 5; 
 }
 
 void Chip8::loadBCD(uint8_t x)
@@ -478,7 +490,7 @@ void Chip8::loadBCD(uint8_t x)
 
 void Chip8::storeRegisters(uint8_t x)
 {
-    for (int i = 0; i < 0x10, ++i)
+    for (auto i = 0; i <= x; ++i)
     {
         mem[I+i] = V[i];
     }
@@ -486,7 +498,7 @@ void Chip8::storeRegisters(uint8_t x)
 
 void Chip8::readRegisters(uint8_t x)
 {
-    for (int i = 0; i < 0x10; ++i)
+    for (auto i = 0; i <= x; ++i)
     {
         V[i] = mem[I+i];
     }

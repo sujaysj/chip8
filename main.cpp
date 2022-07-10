@@ -45,13 +45,10 @@ int main(int argc, char* argv[])
     #pragma endregion
 
     // Initializing Chip8
-    Chip8 chip;
+    Chip8 chip = Chip8();
 
-    // Initializing screen
-    for (int i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; ++i)
-    {
-            chip.screen[i] = 0xFF00FF00;
-    }
+    chip.loadFile( "tetris.ch8" );
+    chip.PC = 0x200;
 
     bool quit = false;
 
@@ -65,8 +62,21 @@ int main(int argc, char* argv[])
     // array for keyUp events to be used for Fx0A: wait for key press instruction
     bool keyUp[0x10];
     std::fill(keyUp, keyUp + 0x10, false);
+    const uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
 
-    uint8_t* keyboardState = SDL_GetKeyboardState(NULL);
+    // creating timing variables
+    uint32_t cycle_currentTime = SDL_GetTicks();
+    uint32_t cycle_lastTime = cycle_currentTime;
+    uint32_t cycle_deltaTime = 0;
+
+    uint32_t delay_currentTime = SDL_GetTicks();
+    uint32_t delay_lastTime = delay_currentTime;
+    uint32_t delay_deltaTime = 0;
+
+    constexpr int CYCLE_FREQ = 500; // placeholder value, will be customizable on launch
+    constexpr int DELAY_RATE = 50; // likely to be fixed at 60 hz, determines delay and sound timer frequency. 
+    constexpr int cycleTime = float(1000) / CYCLE_FREQ; // length of instruction execution in ms
+    constexpr int delayTime = float(1000) / DELAY_RATE; // length of emulation cycle
 
     while( !quit )
     {
@@ -77,9 +87,9 @@ int main(int argc, char* argv[])
             {
                 quit = true;
             }
-            if( e.type == SDLK_KEYUP )
+            if( e.type == SDL_KEYUP )
             {
-                switch (e.key.keysym.sym)
+                switch (e.key.keysym.scancode)
                 {
                     case (Keypad::KEY_0):
                         keyUp[0x0] = true;
@@ -133,16 +143,36 @@ int main(int argc, char* argv[])
             }
         }
 
-        chip.runCycle(keyboardState, keyUp);
+        cycle_deltaTime = cycle_currentTime - cycle_lastTime;
+        if (cycle_deltaTime >= cycleTime)
+        {
+            cycle_deltaTime -= cycleTime;
+            chip.runCycle(keyboardState, keyUp);
+            cycle_lastTime = cycle_currentTime;
+        }
+
+        delay_deltaTime = delay_currentTime - delay_lastTime;
+        if (delay_deltaTime >= delayTime)
+        {
+            delay_deltaTime -= delayTime;
+            if (chip.ST)
+                chip.ST--;
+            if (chip.DT)
+                chip.DT--;
+            delay_lastTime = delay_currentTime;
+        }
 
         if ( chip.screenDrawn ) {
             SDL_LockTexture( texture, NULL, (void**)&pixels, &pitch );
-            memcpy( pixels, chip.screen, sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT );
+            memcpy( pixels, chip.screen, SCREEN_HEIGHT * pitch);
+            // memcpy( pixels, &chip.screen[0], 8192 );
             SDL_UnlockTexture( texture );
+            chip.screenDrawn = false;
+            SDL_RenderCopy( renderer, texture, NULL, NULL );
+            SDL_RenderPresent( renderer );
         }
 
-        SDL_RenderCopy( renderer, texture, NULL, NULL );
-        SDL_RenderPresent( renderer );
+        delay_currentTime = cycle_currentTime = SDL_GetTicks();
     }
 
     SDL_DestroyWindow( window );
